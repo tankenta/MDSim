@@ -1,0 +1,6 @@
+*.swp
+*.swo
+*.swn
+*.o
+lib_eigen/
+data/
