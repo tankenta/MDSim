@@ -3,8 +3,8 @@ CFLAGS  = -std=c++11 -I../lib_eigen
 LDFLAGS = 
 
 TARGET = mdsim
-SRCS	= main.cpp vec_utils.cpp md_utils.cpp
-OBJS	= main.o vec_utils.o md_utils.o
+SRCS	= main.cpp vec_utils.cpp md_utils.cpp file_utils.cpp
+OBJS	= main.o vec_utils.o md_utils.o file_utils.o
 
 RM		= rm -f
 
@@ -21,6 +21,9 @@ vec_utils.o: vec_utils.cpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
 md_utils.o: md_utils.cpp md_utils.hpp vec_utils.hpp
+	$(CC) $(CFLAGS) -c $<
+
+file_utils.o: file_utils.cpp file_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
 clean:

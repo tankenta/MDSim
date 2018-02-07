@@ -14,12 +14,13 @@
 
 #include "vec_utils.hpp"
 #include "md_utils.hpp"
+#include "file_utils.hpp"
 
 int main(int argc, char const* argv[])
 {
-    if (argc < 6) {
+    if (argc < 7) {
         std::cout << 
-            "Usage: ./mdsim dt total_time temp_cont_time phase bc_mode"
+            "Usage: ./mdsim dt total_time temp_cont_time phase bc_mode csv_dir"
             << std::endl;
         exit(0);
     }
@@ -29,6 +30,7 @@ int main(int argc, char const* argv[])
     const double temp_cont_time = std::stod(std::string(argv[3]));
     std::string phase = std::string(argv[4]);
     std::string bc_mode = std::string(argv[5]);
+    std::string csv_dir = std::string(argv[6]);
 
     double number_density;
     if (phase == "solid") {
@@ -130,8 +132,41 @@ int main(int argc, char const* argv[])
         prev_force = next_force;
     }
     // TODO: output data to plot
-    auto tm_pair = calcMeanSquareDisplacement(ptcls_fpos_allst, dt);
+    std::vector<double> total_energy(num_steps);
+    for (const auto& kinetic : kinetic_energy) {
+        size_t idx = &kinetic - &kinetic_energy[0];
+        total_energy[idx] = potential[idx] + kinetic;
+    }
+    exportPlotData2CSV(
+            csv_dir + "total_energy.csv", times, total_energy,
+            "time", "total energy");
+
+    exportPlotData2CSV(
+            csv_dir + "potential_energy.csv", times, potential,
+            "time", "potential energy");
+
+    exportPlotData2CSV(
+            csv_dir + "kinetic_energy.csv", times, kinetic_energy,
+            "time", "kinetic energy");
+
+    exportPlotData2CSV(
+            csv_dir + "temperature.csv", times, current_temp,
+            "time", "temperature");
+
     auto dr_pair = calcRadialDistributionFunction(
             ptcls_pos, volume, number_density, RDF_hist_size, bc_mode);
+    std::vector<double> distance = dr_pair.first;
+    std::vector<double> RDF = dr_pair.second;
+    exportPlotData2CSV(
+            csv_dir + "RDF.csv", distance, RDF,
+            "r", "g(r)");
+
+    auto tm_pair = calcMeanSquareDisplacement(ptcls_fpos_allst, dt);
+    std::vector<double> MSD_time = tm_pair.first;
+    std::vector<double> MSD = tm_pair.second;
+    exportPlotData2CSV(
+            csv_dir + "MSD.csv", MSD_time, MSD,
+            "time", "MSD");
+
     return 0;
 }
