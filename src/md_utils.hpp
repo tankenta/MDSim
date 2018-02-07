@@ -34,6 +34,15 @@ manageBoundaryCollision(
         std::vector<Eigen::Vector3d>& ptcls_pos,
         const Eigen::Vector3d& volume, const std::string& bc_mode);
 
+std::vector<int> calcHistogram(
+        const std::vector<double>& src_arr, int hist_size, 
+        const std::pair<double, double>& hist_range);
+
+std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFunction(
+        const std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume,
+        double number_density, int RDF_hist_size, const std::string bc_mode);
+
 std::pair<std::vector<double>, std::vector<double>>
 calcMeanSquareDisplacement(
         const std::vector<std::vector<Eigen::Vector3d>>& ptcls_fpos_allst, double dt);

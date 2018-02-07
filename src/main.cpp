@@ -131,5 +131,7 @@ int main(int argc, char const* argv[])
     }
     // TODO: output data to plot
     auto tm_pair = calcMeanSquareDisplacement(ptcls_fpos_allst, dt);
+    auto dr_pair = calcRadialDistributionFunction(
+            ptcls_pos, volume, number_density, RDF_hist_size, bc_mode);
     return 0;
 }

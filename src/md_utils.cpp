@@ -166,6 +166,79 @@ manageBoundaryCollision(
     return std::make_pair(ptcls_pos, bc_count);
 }
 
+std::vector<int> calcHistogram(
+        const std::vector<double>& src_arr, int hist_size, 
+        const std::pair<double, double>& hist_range) {
+    std::vector<int> hist(hist_size, 0);
+    const double bin_width = (hist_range.second - hist_range.first) / hist_size;
+    std::vector<int> bin_idxs(src_arr.size());
+    for (const auto& src_el : src_arr) {
+        size_t arr_idx = &src_el - &src_arr[0];
+        bin_idxs[arr_idx] = std::floor(src_el/bin_width) + 1;
+    }
+
+    for (auto& bin_idx : bin_idxs) {
+        bin_idx = std::min(bin_idx, hist_size);
+        hist[bin_idx]++;
+    }
+    return hist;
+}
+
+std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFunction(
+        const std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume,
+        double number_density, int hist_size, const std::string bc_mode) {
+    const double pi = 3.14159265358979;
+    const int num_particles = ptcls_pos.size();
+    int ptcls_dist_dim = 0;
+    for (int i = 1; i < num_particles; i++) {
+        ptcls_dist_dim += i;
+    }
+    std::vector<double> ptcls_distance(ptcls_dist_dim);
+
+    Eigen::Vector3d pos_diff, tmp;
+    int dist_idx = 0;
+    for (int j = 1; j < num_particles; j++) {
+        for (int i = 0; i < j; i++) {
+            pos_diff = ptcls_pos[i] - ptcls_pos[j];
+            if (bc_mode == "periodic") {
+                tmp = 2 * pos_diff.array() / volume.array();
+                tmp.x() = std::trunc(tmp.x());
+                tmp.y() = std::trunc(tmp.y());
+                tmp.z() = std::trunc(tmp.z());
+                tmp = tmp.array() * volume.array();
+                pos_diff -= tmp;
+            } else if (bc_mode == "free") {
+                continue;
+            } else {
+                std::cout << 
+                    "Error: bc_mode must be 'periodic' or 'free'." << std::endl;
+                exit(1);
+            }
+            ptcls_distance[dist_idx] = pos_diff.norm();
+            dist_idx++;
+        }
+    }
+
+    double max_dist = *std::max_element(ptcls_distance.begin(), ptcls_distance.end());
+    std::pair<double, double> hist_range = std::make_pair(0., 1.1*max_dist);
+    std::vector<int> hist = calcHistogram(ptcls_distance, hist_size, hist_range);
+    std::vector<double> dist_distn_mean(hist.size());
+    for (const auto& hist_el : hist) {
+        size_t idx = &hist_el - &hist[0];
+        dist_distn_mean[idx] = 2. * hist_el / num_particles;
+    }
+    double bin_width = (hist_range.second - hist_range.first) / hist_size;
+    std::vector<double> dist(dist_distn_mean.size());
+    std::vector<double> RDF(dist_distn_mean.size());
+    for (const auto& mean_el : dist_distn_mean) {
+        size_t idx = &mean_el - &dist_distn_mean[0];
+        dist[idx] = (hist_range.first + idx) * bin_width;
+        RDF[idx] = mean_el / (number_density*4.*pi*dist[idx]*dist[idx]*bin_width);
+    }
+    return std::make_pair(dist, RDF);
+}
+
 std::pair<std::vector<double>, std::vector<double>>
 calcMeanSquareDisplacement(
         const std::vector<std::vector<Eigen::Vector3d>>& ptcls_fpos_allst, double dt) {
