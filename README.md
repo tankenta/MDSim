@@ -6,21 +6,26 @@ MDSim is a simple molecular dynamics simulator written in C++11.
 * Velocity Verlet algorithm
 * Temperature control by velocity scaling
 * Rectangular cell (periodic or free boundary condition)
+* CSV output
 
 ## Testing environments
 ### Ubuntu 14.04
 * g++ 4.8.4
 * Eigen 3.3.4
 
-## Setup
-Install Eigen.
+## Build
+1. Download Eigen
 ```
 ./setup.sh
 ```
 
-## Usage
+2. Build
 ```
 cd src/
 make
-./mdsim dt total_time temp_cont_time phase bc_mode
+```
+
+## Usage
+```
+./mdsim dt total_time temp_cont_time phase bc_mode csv_dir
 ```
