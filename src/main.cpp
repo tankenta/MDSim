@@ -85,6 +85,7 @@ int main(int argc, char const* argv[])
 
     Eigen::Vector3d tmp;
     for (const auto& step : steps) {
+        std::cout << step << std::endl;     // DEBUG
         for (const auto& ptcl_vel : ptcls_velocity) {
             size_t idx = &ptcl_vel - &ptcls_velocity[0];
             ptcls_pos[idx] += ptcl_vel*dt + prev_force[idx]/(2.*ptcl_mass)*dt*dt;
@@ -129,5 +130,6 @@ int main(int argc, char const* argv[])
         prev_force = next_force;
     }
     // TODO: output data to plot
+    auto tm_pair = calcMeanSquareDisplacement(ptcls_fpos_allst, dt);
     return 0;
 }

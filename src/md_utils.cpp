@@ -13,10 +13,11 @@
 #include <Eigen/Geometry>
 
 #include "md_utils.hpp"
+#include "vec_utils.hpp"
 
 // Eigen::Matrix<double, 3, 256> 
 std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
-        const double lattice_const, Eigen::Vector3i cube_size) {
+        double lattice_const, const Eigen::Vector3i& cube_size) {
     const double side_length = lattice_const * std::sqrt(2);
     Eigen::Matrix<double, 3, 4> pos_criteria;
     pos_criteria << 0., 0., side_length/2., side_length/2.,
@@ -44,7 +45,7 @@ std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
 }
 
 double calcWholeKineticEnergy(
-        std::vector<Eigen::Vector3d> ptcls_velocity, const double ptcl_mass) {
+        const std::vector<Eigen::Vector3d>& ptcls_velocity, double ptcl_mass) {
     const int num_particles = ptcls_velocity.size();
     double sq_v_sum = 0.;
     for (const auto& el : ptcls_velocity) {
@@ -54,7 +55,7 @@ double calcWholeKineticEnergy(
 }
 
 std::vector<Eigen::Vector3d> initVelocity(
-        const int num_particles, const double ptcl_mass, const double target_temp) {
+        int num_particles, double ptcl_mass, double target_temp) {
     std::vector<Eigen::Vector3d> ptcls_velocity(num_particles);
     Eigen::Vector3d ini_v_sum = Eigen::Vector3d::Zero();
     for (auto& el : ptcls_velocity) {
@@ -79,8 +80,8 @@ std::vector<Eigen::Vector3d> initVelocity(
 }
 
 std::vector<Eigen::Vector3d> controlTempByScalingVel(
-        std::vector<Eigen::Vector3d> ptcls_velocity,
-        const double ptcl_mass, const double target_temp) {
+        std::vector<Eigen::Vector3d>& ptcls_velocity,
+        double ptcl_mass, double target_temp) {
     const int num_particles = ptcls_velocity.size();
     const double kinetic_energy = calcWholeKineticEnergy(
             ptcls_velocity, ptcl_mass) / num_particles;
@@ -93,8 +94,8 @@ std::vector<Eigen::Vector3d> controlTempByScalingVel(
 }
 
 std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
-        std::vector<Eigen::Vector3d> ptcls_pos,
-        Eigen::Vector3d volume, std::string bc_mode) {
+        const std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume, const std::string& bc_mode) {
     const int num_particles = ptcls_pos.size();
     const double epsilon = 1.;
     const double sigma = 1.;
@@ -140,8 +141,8 @@ std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
 
 std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> 
 manageBoundaryCollision(
-        std::vector<Eigen::Vector3d> ptcls_pos,
-        Eigen::Vector3d volume, std::string bc_mode) {
+        std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume, const std::string& bc_mode) {
     const int num_particles = ptcls_pos.size();
     std::vector<Eigen::Vector3d> bc_count(num_particles);
     if (bc_mode == "periodic") {
@@ -163,4 +164,33 @@ manageBoundaryCollision(
         exit(1);
     }
     return std::make_pair(ptcls_pos, bc_count);
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+calcMeanSquareDisplacement(
+        const std::vector<std::vector<Eigen::Vector3d>>& ptcls_fpos_allst, double dt) {
+    const int num_nonneg_steps = ptcls_fpos_allst.size();
+    const int num_particles = ptcls_fpos_allst.front().size();
+    std::vector<double> time = generateRange(1., 1., num_nonneg_steps-1.);
+    for (auto& el : time) {
+        el *= dt;
+    }
+    Eigen::MatrixXd tmp_MSD(num_nonneg_steps-1, num_particles);
+    tmp_MSD = Eigen::MatrixXd::Zero(num_nonneg_steps-1, num_particles);
+    Eigen::Vector3d displacement;
+    for (int t = 1; t < num_nonneg_steps; t++) {
+        for (int t0 = 0; t0 < t; t0++) {
+            for (int p = 0; p < num_particles; p++) {
+                displacement = ptcls_fpos_allst[t][p] - ptcls_fpos_allst[t0][p];
+                tmp_MSD(t-t0, p) = displacement.squaredNorm();
+            }
+        }
+    }
+    Eigen::VectorXd MSD = tmp_MSD.rowwise().mean();
+    for (int i = 0; i < num_nonneg_steps-1; i++) {
+        MSD(i) /= num_nonneg_steps-1 - i;
+    }
+    std::vector<double> ret_MSD(num_nonneg_steps-1);
+    Eigen::Map<Eigen::VectorXd>(&ret_MSD[0], ret_MSD.size()) = MSD;
+    return std::make_pair(time, ret_MSD);
 }

@@ -20,7 +20,7 @@ main.o: main.cpp vec_utils.hpp md_utils.hpp
 vec_utils.o: vec_utils.cpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
-md_utils.o: md_utils.cpp md_utils.hpp
+md_utils.o: md_utils.cpp md_utils.hpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
 clean:

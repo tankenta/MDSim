@@ -13,25 +13,29 @@
 #include <Eigen/Geometry>
 
 std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
-        const double lattice_const, Eigen::Vector3i cube_size);
+        double lattice_const, const Eigen::Vector3i& cube_size);
 
 double calcWholeKineticEnergy(
-        std::vector<Eigen::Vector3d> ptcls_velocity, const double ptcl_mass);
+        const std::vector<Eigen::Vector3d>& ptcls_velocity, double ptcl_mass);
 
 std::vector<Eigen::Vector3d> initVelocity(
-        const int num_particles, const double ptcl_mass, const double target_temp);
+        int num_particles, double ptcl_mass, double target_temp);
 
 std::vector<Eigen::Vector3d> controlTempByScalingVel(
-        std::vector<Eigen::Vector3d> ptcls_velocity,
-        const double ptcl_mass, const double target_temp);
+        std::vector<Eigen::Vector3d>& ptcls_velocity,
+        double ptcl_mass, double target_temp);
 
 std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
-        std::vector<Eigen::Vector3d> ptcls_pos,
-        Eigen::Vector3d volume, std::string bc_mode);
+        const std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume, const std::string& bc_mode);
 
 std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> 
 manageBoundaryCollision(
-        std::vector<Eigen::Vector3d> ptcls_pos,
-        Eigen::Vector3d volume, std::string bc_mode);
+        std::vector<Eigen::Vector3d>& ptcls_pos,
+        const Eigen::Vector3d& volume, const std::string& bc_mode);
+
+std::pair<std::vector<double>, std::vector<double>>
+calcMeanSquareDisplacement(
+        const std::vector<std::vector<Eigen::Vector3d>>& ptcls_fpos_allst, double dt);
 
 #endif

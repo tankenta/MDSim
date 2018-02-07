@@ -4,7 +4,7 @@
 #include "vec_utils.hpp"
 
 template <typename T>
-std::vector<bool> makeVecMask(std::vector<T> vec, int op, T num) {
+std::vector<bool> makeVecMask(const std::vector<T>& vec, int op, T num) {
     std::vector<bool> mask(vec.size());
 
     switch (op) {
@@ -41,11 +41,11 @@ std::vector<bool> makeVecMask(std::vector<T> vec, int op, T num) {
     }
     return mask;
 }
-template std::vector<bool> makeVecMask(std::vector<int> vec, int op, int num);
-template std::vector<bool> makeVecMask(std::vector<double> vec, int op, double num);
+template std::vector<bool> makeVecMask(const std::vector<int>& vec, int op, int num);
+template std::vector<bool> makeVecMask(const std::vector<double>& vec, int op, double num);
 
 template <typename T>
-std::vector<T> maskedVec(std::vector<T> vec, std::vector<bool> mask) {
+std::vector<T> maskedVec(const std::vector<T>& vec, const std::vector<bool>& mask) {
     std::vector<T> new_vec;
     const auto head = mask[0];
     for (const auto& el : mask) {
@@ -56,8 +56,10 @@ std::vector<T> maskedVec(std::vector<T> vec, std::vector<bool> mask) {
     }
     return new_vec;
 }
-template std::vector<int> maskedVec(std::vector<int> vec, std::vector<bool> mask);
-template std::vector<double> maskedVec(std::vector<double> vec, std::vector<bool> mask);
+template std::vector<int> maskedVec(
+        const std::vector<int>& vec, const std::vector<bool>& mask);
+template std::vector<double> maskedVec(
+        const std::vector<double>& vec, const std::vector<bool>& mask);
 
 template <typename T>
 std::vector<T> generateRange(T beg, T step, T end) {
