@@ -33,9 +33,9 @@ std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
         for (int iy = 0; iy < cube_size.y(); iy++) {
             for (int iz = 0; iz < cube_size.z(); iz++) {
                 for (int col = 0; col < cols_criteria; col++) {
-                    ptcls_pos[n].x() = pos_criteria(1, col) + (ix-1)*side_length;
-                    ptcls_pos[n].y() = pos_criteria(2, col) + (iy-1)*side_length;
-                    ptcls_pos[n].z() = pos_criteria(3, col) + (iz-1)*side_length;
+                    ptcls_pos[n].x() = pos_criteria(0, col) + ix*side_length;
+                    ptcls_pos[n].y() = pos_criteria(1, col) + iy*side_length;
+                    ptcls_pos[n].z() = pos_criteria(2, col) + iz*side_length;
                     n++;
                 }
             }
