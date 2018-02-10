@@ -73,19 +73,21 @@ int main(int argc, char const* argv[])
     std::vector<Eigen::Vector3d> ptcls_pos = 
         arrangeParticlesInFCCL(lattice_const, cube_size);
     std::vector<std::vector<Eigen::Vector3d>> ptcls_fpos_allst(
-            num_nonneg_steps, std::vector<Eigen::Vector3d>(num_particles));
+            num_nonneg_steps,
+            std::vector<Eigen::Vector3d>(num_particles, Eigen::Vector3d::Zero()));
     std::vector<Eigen::Vector3d> ptcls_velocity = initVelocity(
             num_particles, ptcl_mass, target_temp);
     auto pf_pair = calcLJPotentialAndForce(ptcls_pos, volume, bc_mode);
     std::vector<Eigen::Vector3d> prev_force = pf_pair.second;
-    std::vector<Eigen::Vector3d> bc_count, next_force;
+    std::vector<Eigen::Vector3d> bc_count(num_particles, Eigen::Vector3d::Zero());
+    std::vector<Eigen::Vector3d> next_force(num_particles, Eigen::Vector3d::Zero());
     std::vector<Eigen::Vector3d> bc_count_sum(num_particles, Eigen::Vector3d::Zero());
 
-    std::vector<double> potential(num_steps);
-    std::vector<double> kinetic_energy(num_steps);
-    std::vector<double> current_temp(num_steps);
+    std::vector<double> potential(num_steps, 0.);
+    std::vector<double> kinetic_energy(num_steps, 0.);
+    std::vector<double> current_temp(num_steps, 0.);
 
-    Eigen::Vector3d tmp;
+    Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
     for (const auto& step : steps) {
         std::cout << step << std::endl;     // DEBUG
         for (const auto& ptcl_vel : ptcls_velocity) {

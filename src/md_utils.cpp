@@ -26,7 +26,7 @@ std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
     const int cols_criteria = pos_criteria.cols();
     const int num_particles = cols_criteria
         * cube_size.x() * cube_size.y() * cube_size.z();
-    std::vector<Eigen::Vector3d> ptcls_pos(num_particles);
+    std::vector<Eigen::Vector3d> ptcls_pos(num_particles, Eigen::Vector3d::Zero());
 
     int n = 0;
     for (int ix = 0; ix < cube_size.x(); ix++) {
@@ -59,8 +59,7 @@ std::vector<Eigen::Vector3d> initVelocity(
     std::vector<Eigen::Vector3d> ptcls_velocity(num_particles);
     Eigen::Vector3d ini_v_sum = Eigen::Vector3d::Zero();
     for (auto& el : ptcls_velocity) {
-        el = Eigen::Vector3d::Random()*2;
-        el = el.array() - 1.;
+        el = Eigen::Vector3d::Random();
         ini_v_sum += el;
     }
 
@@ -100,11 +99,14 @@ std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
     const double epsilon = 1.;
     const double sigma = 1.;
     double potential = 0.;
-    std::vector<Eigen::Vector3d> ptcls_force(num_particles);
+    std::vector<Eigen::Vector3d> ptcls_force(num_particles, Eigen::Vector3d::Zero());
 
-    Eigen::Vector3d pos_diff, trunc, force, tmp;
+    Eigen::Vector3d pos_diff = Eigen::Vector3d::Zero();
+    Eigen::Vector3d trunc = Eigen::Vector3d::Zero();
+    Eigen::Vector3d force = Eigen::Vector3d::Zero();
+    Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
     for (int j = 1; j < num_particles; j++) {
-        for (int i = 0; i < j-1; i++) {
+        for (int i = 0; i < j; i++) {
             pos_diff = ptcls_pos[i] - ptcls_pos[j];
             if (bc_mode == "periodic") {
                 trunc = 2. * pos_diff.array() / volume.array();
@@ -144,9 +146,9 @@ manageBoundaryCollision(
         std::vector<Eigen::Vector3d>& ptcls_pos,
         const Eigen::Vector3d& volume, const std::string& bc_mode) {
     const int num_particles = ptcls_pos.size();
-    std::vector<Eigen::Vector3d> bc_count(num_particles);
+    std::vector<Eigen::Vector3d> bc_count(num_particles, Eigen::Vector3d::Zero());
     if (bc_mode == "periodic") {
-        Eigen::Vector3d tmp;
+        Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
         for (auto& ptcl_pos : ptcls_pos) {
             size_t idx = &ptcl_pos - &ptcls_pos[0];
             bc_count[idx] = ptcl_pos.array() / volume.array();
