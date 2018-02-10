@@ -1,9 +1,10 @@
+#include <array>
+#include <cmath>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <array>
-#include <cmath>
 
 #define EIGEN_NO_DEBUG
 #define EIGEN_DONT_VECTORIZE
@@ -22,7 +23,7 @@ int main(int argc, char const* argv[])
         std::cout << 
             "Usage: ./mdsim dt total_time temp_cont_time phase bc_mode csv_dir"
             << std::endl;
-        exit(0);
+        exit(1);
     }
 
     const double dt = std::stod(std::string(argv[1]));
@@ -40,15 +41,11 @@ int main(int argc, char const* argv[])
     } else if (phase == "gas") {
         number_density = 0.01;
     } else {
-        std::cout << "Error: phase must be 'solid' or 'liquid' or 'gas'."
-            << std::endl;
-        exit(1);
+        throw std::invalid_argument("phase must be 'solid' or 'liquid' or 'gas'.");
     }
 
     if (temp_cont_time > total_time) {
-        std::cout << "Error: total_time must be longer than temp_cont_time."
-            << std::endl;
-        exit(1);
+        throw std::invalid_argument("total_time must be longer than temp_cont_time.");
     }
     bool control_temp = temp_cont_time > 0;
     std::vector<double> times = generateRange(
@@ -63,7 +60,7 @@ int main(int argc, char const* argv[])
     const int num_particles = 256;
     const double ptcl_mass = 1.0;
     const double particle_radius = 0.2;
-    const int RDF_hist_size = 60;
+    const int RDF_hist_size = 200;
 
     Eigen::Vector3i cube_size = Eigen::Vector3i::Constant(4);
     const double volume_scalar = num_particles / number_density;
@@ -105,8 +102,8 @@ int main(int argc, char const* argv[])
             size_t step_idx = step - nonneg_step_offset;
             for (const auto& ptcl_pos : ptcls_pos) {
                 size_t ptcl_idx = &ptcl_pos - &ptcls_pos[0];
-                tmp = bc_count_sum[ptcl_idx].array() * volume.array();
-                ptcls_fpos_allst[step_idx][ptcl_idx] = ptcl_pos + tmp;
+                ptcls_fpos_allst[step_idx][ptcl_idx] = ptcl_pos
+                    + (bc_count_sum[ptcl_idx].array() * volume.array()).matrix();
             }
         }
 
@@ -117,7 +114,7 @@ int main(int argc, char const* argv[])
         kinetic_energy[step] = calcWholeKineticEnergy(ptcls_velocity, ptcl_mass);
         current_temp[step] = 2/3. * kinetic_energy[step]/num_particles;
 
-        for (auto& ptcl_vel : ptcls_velocity) {
+        for (auto&& ptcl_vel : ptcls_velocity) {
             size_t idx = &ptcl_vel - &ptcls_velocity[0];
             ptcl_vel += dt/(2.*ptcl_mass)*(next_force[idx] + prev_force[idx]);
         }
@@ -133,7 +130,7 @@ int main(int argc, char const* argv[])
 
         prev_force = next_force;
     }
-    // TODO: output data to plot
+
     std::vector<double> total_energy(num_steps);
     for (const auto& kinetic : kinetic_energy) {
         size_t idx = &kinetic - &kinetic_energy[0];

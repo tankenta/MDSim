@@ -1,4 +1,5 @@
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 #include <utility>
 // DEBUG
@@ -15,7 +16,6 @@
 #include "md_utils.hpp"
 #include "vec_utils.hpp"
 
-// Eigen::Matrix<double, 3, 256> 
 std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
         double lattice_const, const Eigen::Vector3i& cube_size) {
     const double side_length = lattice_const * std::sqrt(2);
@@ -49,7 +49,7 @@ double calcWholeKineticEnergy(
     const int num_particles = ptcls_velocity.size();
     double sq_v_sum = 0.;
     for (const auto& el : ptcls_velocity) {
-        sq_v_sum += el.x()*el.x() + el.y()*el.y() + el.z()*el.z();
+        sq_v_sum += el.squaredNorm();
     }
     return 1/2. * ptcl_mass * sq_v_sum;
 }
@@ -58,13 +58,13 @@ std::vector<Eigen::Vector3d> initVelocity(
         int num_particles, double ptcl_mass, double target_temp) {
     std::vector<Eigen::Vector3d> ptcls_velocity(num_particles);
     Eigen::Vector3d ini_v_sum = Eigen::Vector3d::Zero();
-    for (auto& el : ptcls_velocity) {
+    for (auto&& el : ptcls_velocity) {
         el = Eigen::Vector3d::Random();
         ini_v_sum += el;
     }
 
     Eigen::Vector3d v_average = ini_v_sum / num_particles;
-    for (auto& el : ptcls_velocity) {
+    for (auto&& el : ptcls_velocity) {
         el -= v_average;
     }
 
@@ -86,7 +86,7 @@ std::vector<Eigen::Vector3d> controlTempByScalingVel(
             ptcls_velocity, ptcl_mass) / num_particles;
     const double current_temp = 2/3. * kinetic_energy;
     const double scale_coeff = std::sqrt(target_temp / current_temp);
-    for (auto& ptcl_vel : ptcls_velocity) {
+    for (auto&& ptcl_vel : ptcls_velocity) {
         ptcl_vel *= scale_coeff;
     }
     return ptcls_velocity;
@@ -102,25 +102,20 @@ std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
     std::vector<Eigen::Vector3d> ptcls_force(num_particles, Eigen::Vector3d::Zero());
 
     Eigen::Vector3d pos_diff = Eigen::Vector3d::Zero();
-    Eigen::Vector3d trunc = Eigen::Vector3d::Zero();
-    Eigen::Vector3d force = Eigen::Vector3d::Zero();
-    Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
+    Eigen::Vector3d tmp_trunc = Eigen::Vector3d::Zero();
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
             pos_diff = ptcls_pos[i] - ptcls_pos[j];
             if (bc_mode == "periodic") {
-                trunc = 2. * pos_diff.array() / volume.array();
-                trunc.x() = std::trunc(trunc.x());
-                trunc.y() = std::trunc(trunc.y());
-                trunc.z() = std::trunc(trunc.z());
-                tmp = trunc.array() * volume.array();
-                pos_diff -= tmp;
+                tmp_trunc = 2. * pos_diff.array() / volume.array();
+                tmp_trunc.x() = std::trunc(tmp_trunc.x());
+                tmp_trunc.y() = std::trunc(tmp_trunc.y());
+                tmp_trunc.z() = std::trunc(tmp_trunc.z());
+                pos_diff -= (tmp_trunc.array() * volume.array()).matrix();
             } else if (bc_mode == "free") {
                 continue;
             } else {
-                std::cout << 
-                    "Error: bc_mode must be 'periodic' or 'free'." << std::endl;
-                exit(1);
+                throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
             }
             double ptcls_distance = pos_diff.norm();
 
@@ -133,7 +128,7 @@ std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
                     12 * std::pow(sigma/ptcls_distance, 12)
                     - 6 * std::pow(sigma/ptcls_distance, 6)
                     ) / ptcls_distance;
-            force = force_coeff * pos_diff / ptcls_distance;
+            Eigen::Vector3d force = force_coeff * pos_diff / ptcls_distance;
             ptcls_force[i] += force;
             ptcls_force[j] -= force;
         }
@@ -148,22 +143,18 @@ manageBoundaryCollision(
     const int num_particles = ptcls_pos.size();
     std::vector<Eigen::Vector3d> bc_count(num_particles, Eigen::Vector3d::Zero());
     if (bc_mode == "periodic") {
-        Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
-        for (auto& ptcl_pos : ptcls_pos) {
+        for (auto&& ptcl_pos : ptcls_pos) {
             size_t idx = &ptcl_pos - &ptcls_pos[0];
-            bc_count[idx] = ptcl_pos.array() / volume.array();
-            bc_count[idx] = bc_count[idx].array().floor();
-            tmp = bc_count[idx].array() * volume.array();
-            ptcl_pos -= tmp;
+            bc_count[idx] = (ptcl_pos.array() / volume.array()).floor();
+//             bc_count[idx] = bc_count[idx].array().floor();
+            ptcl_pos -= (bc_count[idx].array() * volume.array()).matrix();
         }
     } else if (bc_mode == "free") {
-        for (auto& el : bc_count) {
+        for (auto&& el : bc_count) {
             el = Eigen::Vector3d::Zero();
         }
     } else {
-        std::cout << 
-            "Error: bc_mode must be 'periodic' or 'free'." << std::endl;
-        exit(1);
+        throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
     }
     return std::make_pair(ptcls_pos, bc_count);
 }
@@ -173,13 +164,13 @@ std::vector<int> calcHistogram(
         const std::pair<double, double>& hist_range) {
     std::vector<int> hist(hist_size, 0);
     const double bin_width = (hist_range.second - hist_range.first) / hist_size;
-    std::vector<int> bin_idxs(src_arr.size());
+    std::vector<int> bin_idxs(src_arr.size(), 0);
     for (const auto& src_el : src_arr) {
         size_t arr_idx = &src_el - &src_arr[0];
         bin_idxs[arr_idx] = std::floor(src_el/bin_width) + 1;
     }
 
-    for (auto& bin_idx : bin_idxs) {
+    for (auto&& bin_idx : bin_idxs) {
         bin_idx = std::min(bin_idx, hist_size);
         hist[bin_idx]++;
     }
@@ -196,26 +187,23 @@ std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFuncti
     for (int i = 1; i < num_particles; i++) {
         ptcls_dist_dim += i;
     }
-    std::vector<double> ptcls_distance(ptcls_dist_dim);
+    std::vector<double> ptcls_distance(ptcls_dist_dim, 0.);
 
-    Eigen::Vector3d pos_diff, tmp;
+    Eigen::Vector3d pos_diff, tmp_trunc;
     int dist_idx = 0;
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
             pos_diff = ptcls_pos[i] - ptcls_pos[j];
             if (bc_mode == "periodic") {
-                tmp = 2 * pos_diff.array() / volume.array();
-                tmp.x() = std::trunc(tmp.x());
-                tmp.y() = std::trunc(tmp.y());
-                tmp.z() = std::trunc(tmp.z());
-                tmp = tmp.array() * volume.array();
-                pos_diff -= tmp;
+                tmp_trunc = 2 * pos_diff.array() / volume.array();
+                tmp_trunc.x() = std::trunc(tmp_trunc.x());
+                tmp_trunc.y() = std::trunc(tmp_trunc.y());
+                tmp_trunc.z() = std::trunc(tmp_trunc.z());
+                pos_diff -= (tmp_trunc.array() * volume.array()).matrix();
             } else if (bc_mode == "free") {
                 continue;
             } else {
-                std::cout << 
-                    "Error: bc_mode must be 'periodic' or 'free'." << std::endl;
-                exit(1);
+                throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
             }
             ptcls_distance[dist_idx] = pos_diff.norm();
             dist_idx++;
@@ -225,14 +213,14 @@ std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFuncti
     double max_dist = *std::max_element(ptcls_distance.begin(), ptcls_distance.end());
     std::pair<double, double> hist_range = std::make_pair(0., 1.1*max_dist);
     std::vector<int> hist = calcHistogram(ptcls_distance, hist_size, hist_range);
-    std::vector<double> dist_distn_mean(hist.size());
+    std::vector<double> dist_distn_mean(hist.size(), 0.);
     for (const auto& hist_el : hist) {
         size_t idx = &hist_el - &hist[0];
         dist_distn_mean[idx] = 2. * hist_el / num_particles;
     }
     double bin_width = (hist_range.second - hist_range.first) / hist_size;
-    std::vector<double> dist(dist_distn_mean.size());
-    std::vector<double> RDF(dist_distn_mean.size());
+    std::vector<double> dist(dist_distn_mean.size(), 0.);
+    std::vector<double> RDF(dist_distn_mean.size(), 0.);
     for (const auto& mean_el : dist_distn_mean) {
         size_t idx = &mean_el - &dist_distn_mean[0];
         dist[idx] = (hist_range.first + idx) * bin_width;
@@ -247,7 +235,7 @@ calcMeanSquareDisplacement(
     const int num_nonneg_steps = ptcls_fpos_allst.size();
     const int num_particles = ptcls_fpos_allst.front().size();
     std::vector<double> time = generateRange(1., 1., num_nonneg_steps-1.);
-    for (auto& el : time) {
+    for (auto&& el : time) {
         el *= dt;
     }
     Eigen::MatrixXd tmp_MSD(num_nonneg_steps-1, num_particles);
