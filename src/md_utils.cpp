@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <vector>
 #include <utility>
+#include <random>
 // DEBUG
 #include <iostream>
 #include <iomanip>
@@ -58,6 +59,7 @@ std::vector<Eigen::Vector3d> initVelocity(
         int num_particles, double ptcl_mass, double target_temp) {
     std::vector<Eigen::Vector3d> ptcls_velocity(num_particles);
     Eigen::Vector3d ini_v_sum = Eigen::Vector3d::Zero();
+    std::srand((unsigned int) time(0));
     for (auto&& el : ptcls_velocity) {
         el = Eigen::Vector3d::Random();
         ini_v_sum += el;
@@ -146,7 +148,6 @@ manageBoundaryCollision(
         for (auto&& ptcl_pos : ptcls_pos) {
             size_t idx = &ptcl_pos - &ptcls_pos[0];
             bc_count[idx] = (ptcl_pos.array() / volume.array()).floor();
-//             bc_count[idx] = bc_count[idx].array().floor();
             ptcl_pos -= (bc_count[idx].array() * volume.array()).matrix();
         }
     } else if (bc_mode == "free") {
@@ -245,15 +246,15 @@ calcMeanSquareDisplacement(
         for (int t0 = 0; t0 < t; t0++) {
             for (int p = 0; p < num_particles; p++) {
                 displacement = ptcls_fpos_allst[t][p] - ptcls_fpos_allst[t0][p];
-                tmp_MSD(t-t0, p) = displacement.squaredNorm();
+                tmp_MSD(t-t0-1, p) += displacement.squaredNorm();
             }
         }
     }
     Eigen::VectorXd MSD = tmp_MSD.rowwise().mean();
     for (int i = 0; i < num_nonneg_steps-1; i++) {
-        MSD(i) /= num_nonneg_steps-1 - i;
+        MSD(i) /= num_nonneg_steps-1. - i;
     }
-    std::vector<double> ret_MSD(num_nonneg_steps-1);
+    std::vector<double> ret_MSD(num_nonneg_steps-1, 0.);
     Eigen::Map<Eigen::VectorXd>(&ret_MSD[0], ret_MSD.size()) = MSD;
     return std::make_pair(time, ret_MSD);
 }
