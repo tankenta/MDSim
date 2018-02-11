@@ -28,20 +28,20 @@ def csv2result_dict(csv_path):
     return result_dict
 
 def plot_all_results(csv_dir):
-    fig = plt.figure()
-    for key, info in RESULTS_INFO.items():
-        csv_path = os.path.join(csv_dir, info['file_name'])
+    fig = plt.figure(figsize=FIG_SIZE)
+    for key, conf in PLOT_CONF.items():
+        csv_path = os.path.join(csv_dir, conf['file_name'])
         result_dict = csv2result_dict(csv_path)
 
-        ax = fig.add_subplot(info['plot_pos'])
-        if info['type'] == 'plot':
+        ax = fig.add_subplot(conf['plot_pos'])
+        if conf['type'] == 'plot':
             ax.plot(
                     result_dict['array_x'], result_dict['array_y'],
-                    info['style'], label=info['label'])
+                    conf['style'], label=conf['label'])
         else:
             ax.scatter(
                     result_dict['array_x'], result_dict['array_y'],
-                    info['size'], info['style'], label=info['label'])
+                    conf['size'], conf['style'], label=conf['label'])
         ax.set_xlabel(result_dict['label_x'])
         ax.set_ylabel(result_dict['label_y'])
         ax.xaxis.set_tick_params(

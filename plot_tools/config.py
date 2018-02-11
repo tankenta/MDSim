@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-RESULTS_INFO = {
+FIG_SIZE = (8, 6)
+
+PLOT_CONF = {
         'total': {
             'file_name': 'total_energy.csv',
             'plot_pos': 321,
             'type': 'scatter',
             'label': 'total energy',
             'style': 'r',
-            'size': 30,
+            'size': 10,
         },
         'potential': {
             'file_name': 'potential_energy.csv',
@@ -16,7 +18,7 @@ RESULTS_INFO = {
             'type': 'scatter',
             'label': 'potential energy',
             'style': 'g',
-            'size': 30,
+            'size': 10,
         },
         'kinetic': {
             'file_name': 'kinetic_energy.csv',
@@ -24,7 +26,7 @@ RESULTS_INFO = {
             'type': 'scatter',
             'label': 'kinetic energy',
             'style': 'b',
-            'size': 30,
+            'size': 10,
         },
         'temp': {
             'file_name': 'temperature.csv',
@@ -32,7 +34,7 @@ RESULTS_INFO = {
             'type': 'scatter',
             'label': 'temperature',
             'style': 'm',
-            'size': 30,
+            'size': 10,
         },
         'rdf': {
             'file_name': 'RDF.csv',
@@ -47,7 +49,7 @@ RESULTS_INFO = {
             'type': 'scatter',
             'label': 'MSD',
             'style': 'c',
-            'size': 30,
+            'size': 10,
         }
 }
 
