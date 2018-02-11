@@ -13,9 +13,9 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#include "vec_utils.hpp"
-#include "md_utils.hpp"
 #include "file_utils.hpp"
+#include "md_utils.hpp"
+#include "vec_utils.hpp"
 
 int main(int argc, char const* argv[])
 {
@@ -84,9 +84,10 @@ int main(int argc, char const* argv[])
     std::vector<double> kinetic_energy(num_steps, 0.);
     std::vector<double> current_temp(num_steps, 0.);
 
-    Eigen::Vector3d tmp = Eigen::Vector3d::Zero();
+    std::cout << "running the simulation..." << std::endl;
+    ProgressBar prog(steps.front(), steps.back());
     for (const auto& step : steps) {
-        std::cout << step << std::endl;     // DEBUG
+        prog.printProgressBar(step);
         for (const auto& ptcl_vel : ptcls_velocity) {
             size_t idx = &ptcl_vel - &ptcls_velocity[0];
             ptcls_pos[idx] += ptcl_vel*dt + prev_force[idx]/(2.*ptcl_mass)*dt*dt;
@@ -130,6 +131,7 @@ int main(int argc, char const* argv[])
 
         prev_force = next_force;
     }
+    prog.finish();
 
     std::vector<double> total_energy(num_steps);
     for (const auto& kinetic : kinetic_energy) {

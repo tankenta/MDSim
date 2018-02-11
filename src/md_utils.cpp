@@ -1,11 +1,9 @@
 #include <cmath>
-#include <stdexcept>
-#include <vector>
-#include <utility>
-#include <random>
-// DEBUG
 #include <iostream>
-#include <iomanip>
+#include <random>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 #define EIGEN_NO_DEBUG
 #define EIGEN_DONT_VECTORIZE
@@ -14,6 +12,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include "file_utils.hpp"
 #include "md_utils.hpp"
 #include "vec_utils.hpp"
 
@@ -71,12 +70,6 @@ std::vector<Eigen::Vector3d> initVelocity(
     }
 
     ptcls_velocity = controlTempByScalingVel(ptcls_velocity, ptcl_mass, target_temp);
-    // DEBUG
-    const double kinetic_energy = calcWholeKineticEnergy(
-            ptcls_velocity, ptcl_mass) / num_particles;
-    const double current_temp = 2/3. * kinetic_energy;
-    std::cout << "current temp: " << 
-            std::setprecision(3) << current_temp << std::endl;
     return ptcls_velocity;
 }
 
@@ -239,10 +232,14 @@ calcMeanSquareDisplacement(
     for (auto&& el : time) {
         el *= dt;
     }
+
     Eigen::MatrixXd tmp_MSD(num_nonneg_steps-1, num_particles);
     tmp_MSD = Eigen::MatrixXd::Zero(num_nonneg_steps-1, num_particles);
     Eigen::Vector3d displacement;
+    std::cout << "calculating MSD..." << std::endl;
+    ProgressBar prog(1, num_nonneg_steps-1);
     for (int t = 1; t < num_nonneg_steps; t++) {
+        prog.printProgressBar(t);
         for (int t0 = 0; t0 < t; t0++) {
             for (int p = 0; p < num_particles; p++) {
                 displacement = ptcls_fpos_allst[t][p] - ptcls_fpos_allst[t0][p];
@@ -250,10 +247,12 @@ calcMeanSquareDisplacement(
             }
         }
     }
+
     Eigen::VectorXd MSD = tmp_MSD.rowwise().mean();
     for (int i = 0; i < num_nonneg_steps-1; i++) {
         MSD(i) /= num_nonneg_steps-1. - i;
     }
+    prog.finish();
     std::vector<double> ret_MSD(num_nonneg_steps-1, 0.);
     Eigen::Map<Eigen::VectorXd>(&ret_MSD[0], ret_MSD.size()) = MSD;
     return std::make_pair(time, ret_MSD);

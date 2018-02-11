@@ -14,13 +14,13 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-main.o: main.cpp vec_utils.hpp md_utils.hpp
+main.o: main.cpp file_utils.hpp md_utils.hpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
 vec_utils.o: vec_utils.cpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
-md_utils.o: md_utils.cpp md_utils.hpp vec_utils.hpp
+md_utils.o: md_utils.cpp md_utils.hpp file_utils.hpp vec_utils.hpp
 	$(CC) $(CFLAGS) -c $<
 
 file_utils.o: file_utils.cpp file_utils.hpp
