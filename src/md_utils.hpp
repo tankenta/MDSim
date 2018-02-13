@@ -1,5 +1,4 @@
-#ifndef MD_UTILS_H_
-#define MD_UTILS_H_
+#pragma once
 
 #include <vector>
 #include <utility>
@@ -12,39 +11,49 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
-        double lattice_const, const Eigen::Vector3i& cube_size);
+class MDSim {
+public:
+    MDSim(
+            double dt, double total_time, double temp_cont_time,
+            double number_density, std::string bc_mode, double target_temp,
+            int num_particles, double ptcl_mass, int RDF_hist_size,
+            const Eigen::Vector3i& cube_size);
+    void renewPtclsPos();
+    void manageBoundaryCollision();
+    void renewPtclsFreePos(int step);
+    double calcLJPotentialAndForce(std::vector<Eigen::Vector3d>& ptcls_force);
+    double calcWholeKineticEnergy();
+    void renewPtclsVel();
+    void next(int step);
+    void calcTotalEnergy();
+    std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFunction();
+    std::pair<std::vector<double>, std::vector<double>> calcMeanSquareDisplacement();
 
-double calcWholeKineticEnergy(
-        const std::vector<Eigen::Vector3d>& ptcls_velocity, double ptcl_mass);
+    std::vector<double> times;
+    std::vector<int> steps;
+    std::vector<Eigen::Vector3d> ptcls_pos;
+    std::vector<double> potential_arr, kinetic_energy_arr, total_energy_arr, current_temp_arr;
 
-std::vector<Eigen::Vector3d> initVelocity(
-        int num_particles, double ptcl_mass, double target_temp);
+private:
+    std::vector<Eigen::Vector3d> fillVecWithZeros(int size);
+    std::vector<double> fillVecWithZero(int size);
+    std::vector<Eigen::Vector3d> arrangeParticlesInFCCL(
+            double lattice_const, const Eigen::Vector3i& cube_size);
+    void initVelocity();
+    void controlTempByScalingVel();
+    std::vector<int> calcHistogram(
+            const std::vector<double>& src_arr, int hist_size, 
+            const std::pair<double, double>& hist_range);
+    void printIniVal();
 
-std::vector<Eigen::Vector3d> controlTempByScalingVel(
-        std::vector<Eigen::Vector3d>& ptcls_velocity,
-        double ptcl_mass, double target_temp);
+    const double dt, total_time, temp_cont_time, number_density, target_temp, ptcl_mass;
+    const int num_particles, RDF_hist_size;
+    int num_steps, nonneg_step_offset; 
+    std::string bc_mode;
+    bool control_temp;
+    Eigen::Vector3d volume;
+    std::vector<std::vector<Eigen::Vector3d>> ptcls_fpos_allst;
+    std::vector<Eigen::Vector3d> ptcls_velocity;
+    std::vector<Eigen::Vector3d> prev_force, next_force, bc_count, bc_count_sum;
+};
 
-std::pair<double, std::vector<Eigen::Vector3d>> calcLJPotentialAndForce(
-        const std::vector<Eigen::Vector3d>& ptcls_pos,
-        const Eigen::Vector3d& volume, const std::string& bc_mode);
-
-std::pair<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>> 
-manageBoundaryCollision(
-        std::vector<Eigen::Vector3d>& ptcls_pos,
-        const Eigen::Vector3d& volume, const std::string& bc_mode);
-
-std::vector<int> calcHistogram(
-        const std::vector<double>& src_arr, int hist_size, 
-        const std::pair<double, double>& hist_range);
-
-std::pair<std::vector<double>, std::vector<double>> calcRadialDistributionFunction(
-        const std::vector<Eigen::Vector3d>& ptcls_pos,
-        const Eigen::Vector3d& volume,
-        double number_density, int RDF_hist_size, const std::string bc_mode);
-
-std::pair<std::vector<double>, std::vector<double>>
-calcMeanSquareDisplacement(
-        const std::vector<std::vector<Eigen::Vector3d>>& ptcls_fpos_allst, double dt);
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef VEC_UTILS_H_
-#define VEC_UTILS_H_
+#pragma once
 
 #include <vector>
 
@@ -17,4 +16,3 @@ template <typename T>
 std::vector<T> generateRange(T beg, T step, T end);
 std::vector<double> linspace(double beg, double end, double n_step);
 
-#endif

@@ -17,18 +17,13 @@ MDSim is a simple molecular dynamics simulator written in C++11.
 * matplotlib 2.0.2
 
 ## Build
-1. Clone this repository
-```
-git clone https://github.com/tankenta/MDSim.git
-```
-
-2. Setup library (Eigen)
+1. Setup library (Eigen)
 ```
 cd MDSim/
 ./setup.sh
 ```
 
-3. Build
+2. Build
 ```
 cd src/
 make
@@ -46,3 +41,10 @@ mkdir your_csv_dir/
 cd MDSim/plot_tools/
 ./plot_results.py path/to/your_csv_dir/
 ```
+
+## TODO
+- [x] Organize codes into classes
+- [ ] Faster matrix operation
+	- [ ] std::vector<Eigen::Vector3d> -> Eigen::MatrixXd
+- [ ] Flexible parameter settings by command-line arguments
+- [ ] Add GUI

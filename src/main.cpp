@@ -44,125 +44,50 @@ int main(int argc, char const* argv[])
         throw std::invalid_argument("phase must be 'solid' or 'liquid' or 'gas'.");
     }
 
-    if (temp_cont_time > total_time) {
-        throw std::invalid_argument("total_time must be longer than temp_cont_time.");
-    }
-    bool control_temp = temp_cont_time > 0;
-    std::vector<double> times = generateRange(
-            -temp_cont_time+dt, dt, total_time-temp_cont_time);
-    const int num_steps = times.size();
-    std::vector<int> steps = generateRange(0, 1, num_steps-1);
-    std::vector<bool> times_mask = makeVecMask(times, LESR, 0.);
-    const int nonneg_step_offset = maskedVec(times, times_mask).size();
-    const int num_nonneg_steps = num_steps - nonneg_step_offset;
-
     const double target_temp = 1.0;
     const int num_particles = 256;
     const double ptcl_mass = 1.0;
     const double particle_radius = 0.2;
     const int RDF_hist_size = 200;
-
     Eigen::Vector3i cube_size = Eigen::Vector3i::Constant(4);
-    const double volume_scalar = num_particles / number_density;
-    Eigen::Vector3d volume = Eigen::Vector3d::Constant(std::pow(volume_scalar, 1/3.));
 
-    const double lattice_const = std::pow(volume_scalar, 1/3.)/8.*std::sqrt(2.);
-    std::vector<Eigen::Vector3d> ptcls_pos = 
-        arrangeParticlesInFCCL(lattice_const, cube_size);
-    std::vector<std::vector<Eigen::Vector3d>> ptcls_fpos_allst(
-            num_nonneg_steps,
-            std::vector<Eigen::Vector3d>(num_particles, Eigen::Vector3d::Zero()));
-    std::vector<Eigen::Vector3d> ptcls_velocity = initVelocity(
-            num_particles, ptcl_mass, target_temp);
-    auto pf_pair = calcLJPotentialAndForce(ptcls_pos, volume, bc_mode);
-    std::vector<Eigen::Vector3d> prev_force = pf_pair.second;
-    std::vector<Eigen::Vector3d> bc_count(num_particles, Eigen::Vector3d::Zero());
-    std::vector<Eigen::Vector3d> next_force(num_particles, Eigen::Vector3d::Zero());
-    std::vector<Eigen::Vector3d> bc_count_sum(num_particles, Eigen::Vector3d::Zero());
-
-    std::vector<double> potential(num_steps, 0.);
-    std::vector<double> kinetic_energy(num_steps, 0.);
-    std::vector<double> current_temp(num_steps, 0.);
+    MDSim md(
+            dt, total_time, temp_cont_time, number_density, bc_mode,
+            target_temp, num_particles, ptcl_mass, RDF_hist_size, cube_size);
 
     std::cout << "running the simulation..." << std::endl;
-    ProgressBar prog(steps.front(), steps.back());
-    for (const auto& step : steps) {
+    ProgressBar prog(md.steps.front(), md.steps.back());
+    for (const auto& step : md.steps) {
         prog.printProgressBar(step);
-        for (const auto& ptcl_vel : ptcls_velocity) {
-            size_t idx = &ptcl_vel - &ptcls_velocity[0];
-            ptcls_pos[idx] += ptcl_vel*dt + prev_force[idx]/(2.*ptcl_mass)*dt*dt;
-        }
-        auto pc_pair = manageBoundaryCollision(ptcls_pos, volume, bc_mode);
-        ptcls_pos = pc_pair.first;
-        bc_count = pc_pair.second;
-        if (times[step] >= 0.) {
-            for (const auto& bcc : bc_count) {
-                size_t idx = &bcc - &bc_count[0];
-                bc_count_sum[idx] += bcc;
-            }
-            size_t step_idx = step - nonneg_step_offset;
-            for (const auto& ptcl_pos : ptcls_pos) {
-                size_t ptcl_idx = &ptcl_pos - &ptcls_pos[0];
-                ptcls_fpos_allst[step_idx][ptcl_idx] = ptcl_pos
-                    + (bc_count_sum[ptcl_idx].array() * volume.array()).matrix();
-            }
-        }
-
-        pf_pair = calcLJPotentialAndForce(ptcls_pos, volume, bc_mode);
-        potential[step] = pf_pair.first;
-        next_force = pf_pair.second;
-
-        kinetic_energy[step] = calcWholeKineticEnergy(ptcls_velocity, ptcl_mass);
-        current_temp[step] = 2/3. * kinetic_energy[step]/num_particles;
-
-        for (auto&& ptcl_vel : ptcls_velocity) {
-            size_t idx = &ptcl_vel - &ptcls_velocity[0];
-            ptcl_vel += dt/(2.*ptcl_mass)*(next_force[idx] + prev_force[idx]);
-        }
-
-        if (control_temp) {
-            ptcls_velocity = controlTempByScalingVel(
-                    ptcls_velocity, ptcl_mass, target_temp);
-            if (times[step] > 0.) {
-                control_temp = false;
-                // TODO: output equilibrium_ptcl_pos to plot
-            }
-        }
-
-        prev_force = next_force;
+        md.next(step);
     }
     prog.finish();
 
-    std::vector<double> total_energy(num_steps);
-    for (const auto& kinetic : kinetic_energy) {
-        size_t idx = &kinetic - &kinetic_energy[0];
-        total_energy[idx] = potential[idx] + kinetic;
-    }
+    md.calcTotalEnergy();
     exportPlotData2CSV(
-            csv_dir + "total_energy.csv", times, total_energy,
+            csv_dir + "total_energy.csv", md.times, md.total_energy_arr,
             "time", "total energy");
 
     exportPlotData2CSV(
-            csv_dir + "potential_energy.csv", times, potential,
+            csv_dir + "potential_energy.csv", md.times, md.potential_arr,
             "time", "potential energy");
 
     exportPlotData2CSV(
-            csv_dir + "kinetic_energy.csv", times, kinetic_energy,
+            csv_dir + "kinetic_energy.csv", md.times, md.kinetic_energy_arr,
             "time", "kinetic energy");
 
     exportPlotData2CSV(
-            csv_dir + "temperature.csv", times, current_temp,
+            csv_dir + "temperature.csv", md.times, md.current_temp_arr,
             "time", "temperature");
 
-    auto dr_pair = calcRadialDistributionFunction(
-            ptcls_pos, volume, number_density, RDF_hist_size, bc_mode);
+    auto dr_pair = md.calcRadialDistributionFunction();
     std::vector<double> distance = dr_pair.first;
     std::vector<double> RDF = dr_pair.second;
     exportPlotData2CSV(
             csv_dir + "RDF.csv", distance, RDF,
             "r", "g(r)");
 
-    auto tm_pair = calcMeanSquareDisplacement(ptcls_fpos_allst, dt);
+    auto tm_pair = md.calcMeanSquareDisplacement();
     std::vector<double> MSD_time = tm_pair.first;
     std::vector<double> MSD = tm_pair.second;
     exportPlotData2CSV(
