@@ -44,7 +44,5 @@ cd MDSim/plot_tools/
 
 ## TODO
 - [x] Organize codes into classes
-- [ ] Faster matrix operation
-	- [ ] std::vector<Eigen::Vector3d> -> Eigen::MatrixXd
 - [ ] Flexible parameter settings by command-line arguments
 - [ ] Add GUI

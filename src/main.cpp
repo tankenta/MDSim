@@ -7,8 +7,6 @@
 #include <vector>
 
 #define EIGEN_NO_DEBUG
-#define EIGEN_DONT_VECTORIZE
-#define EIGEN_DONT_PARALLELIZE
 #define EIGEN_MPL2_ONLY
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -26,6 +24,7 @@ int main(int argc, char const* argv[])
         exit(1);
     }
 
+    std::cout << "initializing..." << std::endl;
     const double dt = std::stod(std::string(argv[1]));
     const double total_time = std::stod(std::string(argv[2]));
     const double temp_cont_time = std::stod(std::string(argv[3]));

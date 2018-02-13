@@ -7,8 +7,6 @@
 #include <vector>
 
 #define EIGEN_NO_DEBUG
-#define EIGEN_DONT_VECTORIZE
-#define EIGEN_DONT_PARALLELIZE
 #define EIGEN_MPL2_ONLY
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -39,109 +37,32 @@ MDSim::MDSim(
 
     const double volume_scalar = num_particles / number_density;
     volume = Eigen::Vector3d::Constant(std::pow(volume_scalar, 1/3.));
+    volume_vecs = volume.replicate(1, num_particles);
 
     const double lattice_const = std::pow(volume_scalar, 1/3.)/8.*std::sqrt(2.);
     ptcls_pos = arrangeParticlesInFCCL(lattice_const, cube_size);
-    std::vector<std::vector<Eigen::Vector3d>> tmp(
-            num_nonneg_steps,
-            std::vector<Eigen::Vector3d>(num_particles, Eigen::Vector3d::Zero()));
+    std::vector<Eigen::MatrixXd> tmp(
+            num_nonneg_steps, Eigen::MatrixXd::Zero(3, num_particles));
     ptcls_fpos_allst = tmp;
-    ptcls_velocity = fillVecWithZeros(num_particles);
-    initVelocity();
-    prev_force = fillVecWithZeros(num_particles);
+    ptcls_velocity = initVelocity();
+    prev_force = Eigen::MatrixXd::Zero(3, num_particles);
     calcLJPotentialAndForce(prev_force);
-    bc_count = fillVecWithZeros(num_particles);
-    next_force = fillVecWithZeros(num_particles);
-    bc_count_sum = fillVecWithZeros(num_particles);
+    bc_count = Eigen::MatrixXd::Zero(3, num_particles);
+    next_force = Eigen::MatrixXd::Zero(3, num_particles);
+    bc_count_sum = Eigen::MatrixXd::Zero(3, num_particles);
 
-    potential_arr = fillVecWithZero(num_steps);
-    kinetic_energy_arr = fillVecWithZero(num_steps);
-    total_energy_arr = fillVecWithZero(num_steps);
-    current_temp_arr = fillVecWithZero(num_steps);
-    // printIniVal();   // DEBUG
+    potential_arr = vecZeros(num_steps);
+    kinetic_energy_arr = vecZeros(num_steps);
+    total_energy_arr = vecZeros(num_steps);
+    current_temp_arr = vecZeros(num_steps);
 }
 
-void MDSim::printIniVal() {
-    std::cout << "times len  : " << times.size() << std::endl;
-    std::cout << "times front: " << times.front() << std::endl;
-    std::cout << "times back : " << times.back() << std::endl;
-
-    std::cout << "steps len  : " << steps.size() << std::endl;
-    std::cout << "steps front: " << steps.front() << std::endl;
-    std::cout << "steps back : " << steps.back() << std::endl;
-
-    std::cout << "p_pos len  : " << ptcls_pos.size() << std::endl;
-    std::cout << "p_pos front: " << ptcls_pos.front() << std::endl;
-    std::cout << "p_pos back : " << ptcls_pos.back() << std::endl;
-
-    std::cout << "poten len  : " << potential_arr.size() << std::endl;
-    std::cout << "poten front: " << potential_arr.front() << std::endl;
-    std::cout << "poten back : " << potential_arr.back() << std::endl;
-
-    std::cout << "kinet len  : " << kinetic_energy_arr.size() << std::endl;
-    std::cout << "kinet front: " << kinetic_energy_arr.front() << std::endl;
-    std::cout << "kinet back : " << kinetic_energy_arr.back() << std::endl;
-
-    std::cout << "total len  : " << total_energy_arr.size() << std::endl;
-    std::cout << "total front: " << total_energy_arr.front() << std::endl;
-    std::cout << "total back : " << total_energy_arr.back() << std::endl;
-
-    std::cout << "c_temp len  : " << current_temp_arr.size() << std::endl;
-    std::cout << "c_temp front: " << current_temp_arr.front() << std::endl;
-    std::cout << "c_temp back : " << current_temp_arr.back() << std::endl;
-
-    std::cout << "p_force len  : " << prev_force.size() << std::endl;
-    std::cout << "p_force front: " << prev_force.front() << std::endl;
-    std::cout << "p_force back : " << prev_force.back() << std::endl;
-
-    std::cout << "n_force len  : " << next_force.size() << std::endl;
-    std::cout << "n_force front: " << next_force.front() << std::endl;
-    std::cout << "n_force back : " << next_force.back() << std::endl;
-
-    std::cout << "bcc len  : " << bc_count.size() << std::endl;
-    std::cout << "bcc front: " << bc_count.front() << std::endl;
-    std::cout << "bcc back : " << bc_count.back() << std::endl;
-
-    std::cout << "bcs len  : " << bc_count_sum.size() << std::endl;
-    std::cout << "bcs front: " << bc_count_sum.front() << std::endl;
-    std::cout << "bcs back : " << bc_count_sum.back() << std::endl;
-
-    std::cout << "p_vel len  : " << ptcls_velocity.size() << std::endl;
-    std::cout << "p_vel front: " << ptcls_velocity.front() << std::endl;
-    std::cout << "p_vel back : " << ptcls_velocity.back() << std::endl;
-
-    std::cout << "f_pos len    : " << ptcls_fpos_allst.size() << std::endl;
-    std::cout << "f_pos fr len : " << ptcls_fpos_allst.front().size() << std::endl;
-    std::cout << "f_pos fr fr  : " << ptcls_fpos_allst.front().front() << std::endl;
-    std::cout << "f_pos bc bc  : " << ptcls_fpos_allst.back().back() << std::endl;
-
-    std::cout << "dt : " << dt << std::endl;
-    std::cout << "total_time : " << total_time << std::endl;
-    std::cout << "temp_cont_time : " << temp_cont_time << std::endl;
-    std::cout << "number_density : " << number_density << std::endl;
-    std::cout << "target_temp : " << target_temp << std::endl;
-    std::cout << "ptcl_mass : " << ptcl_mass << std::endl;
-    std::cout << "num_particles : " << num_particles << std::endl;
-    std::cout << "RDF_hist_size : " << RDF_hist_size << std::endl;
-    std::cout << "num_steps : " << num_steps << std::endl;
-    std::cout << "nonneg_step_offset : " << nonneg_step_offset << std::endl;
-    std::cout << "bc_mode : " << bc_mode << std::endl;
-    std::cout << "control_temp : " << control_temp << std::endl;
-    std::cout << "volume : " << volume << std::endl;
-    return;
-}
-
-std::vector<Eigen::Vector3d> MDSim::fillVecWithZeros(int size) {
-    std::vector<Eigen::Vector3d> v(size, Eigen::Vector3d::Zero());
-    return v;
-}
-
-std::vector<double> MDSim::fillVecWithZero(int size) {
+std::vector<double> MDSim::vecZeros(int size) {
     std::vector<double> v(size, 0.);
     return v;
 }
 
-std::vector<Eigen::Vector3d> MDSim::arrangeParticlesInFCCL(
+Eigen::MatrixXd MDSim::arrangeParticlesInFCCL(
         double lattice_const, const Eigen::Vector3i& cube_size) {
     const double side_length = lattice_const * std::sqrt(2);
     Eigen::Matrix<double, 3, 4> pos_criteria;
@@ -151,16 +72,16 @@ std::vector<Eigen::Vector3d> MDSim::arrangeParticlesInFCCL(
     const int cols_criteria = pos_criteria.cols();
     const int num_particles = cols_criteria
         * cube_size.x() * cube_size.y() * cube_size.z();
-    std::vector<Eigen::Vector3d> ini_ptcls_pos(num_particles, Eigen::Vector3d::Zero());
+    Eigen::MatrixXd ini_ptcls_pos = Eigen::MatrixXd::Zero(3, num_particles);
 
     int n = 0;
     for (int ix = 0; ix < cube_size.x(); ix++) {
         for (int iy = 0; iy < cube_size.y(); iy++) {
             for (int iz = 0; iz < cube_size.z(); iz++) {
                 for (int col = 0; col < cols_criteria; col++) {
-                    ini_ptcls_pos[n].x() = pos_criteria(0, col) + ix*side_length;
-                    ini_ptcls_pos[n].y() = pos_criteria(1, col) + iy*side_length;
-                    ini_ptcls_pos[n].z() = pos_criteria(2, col) + iz*side_length;
+                    ini_ptcls_pos(0, n) = pos_criteria(0, col) + ix*side_length;
+                    ini_ptcls_pos(1, n) = pos_criteria(1, col) + iy*side_length;
+                    ini_ptcls_pos(2, n) = pos_criteria(2, col) + iz*side_length;
                     n++;
                 }
             }
@@ -169,28 +90,18 @@ std::vector<Eigen::Vector3d> MDSim::arrangeParticlesInFCCL(
     return ini_ptcls_pos;
 }
 
-void MDSim::initVelocity() {
-    Eigen::Vector3d ini_v_sum = Eigen::Vector3d::Zero();
+Eigen::MatrixXd MDSim::initVelocity() {
     std::srand((unsigned int) time(0));
-    for (auto&& el : ptcls_velocity) {
-        el = Eigen::Vector3d::Random();
-        ini_v_sum += el;
-    }
+    ptcls_velocity = Eigen::MatrixXd::Random(3, num_particles);
 
-    Eigen::Vector3d v_average = ini_v_sum / num_particles;
-    for (auto&& el : ptcls_velocity) {
-        el -= v_average;
-    }
-
+    Eigen::Vector3d v_average = ptcls_velocity.rowwise().mean();
+    ptcls_velocity -= v_average.replicate(1, num_particles);
     controlTempByScalingVel();
-    return;
+    return ptcls_velocity;
 }
 
 void MDSim::renewPtclsPos() {
-    for (const auto& ptcl_vel : ptcls_velocity) {
-        size_t idx = &ptcl_vel - &ptcls_velocity[0];
-        ptcls_pos[idx] += ptcl_vel*dt + prev_force[idx]/(2.*ptcl_mass)*dt*dt;
-    }
+    ptcls_pos += ptcls_velocity*dt + prev_force/(2.*ptcl_mass)*dt*dt;
     return;
 }
 
@@ -198,23 +109,16 @@ void MDSim::controlTempByScalingVel() {
     const double kinetic_energy = calcWholeKineticEnergy() / num_particles;
     const double current_temp = 2/3. * kinetic_energy;
     const double scale_coeff = std::sqrt(target_temp / current_temp);
-    for (auto&& ptcl_vel : ptcls_velocity) {
-        ptcl_vel *= scale_coeff;
-    }
+    ptcls_velocity *= scale_coeff;
     return;
 }
 
 void MDSim::manageBoundaryCollision() {
     if (bc_mode == "periodic") {
-        for (auto&& ptcl_pos : ptcls_pos) {
-            size_t idx = &ptcl_pos - &ptcls_pos[0];
-            bc_count[idx] = (ptcl_pos.array() / volume.array()).floor();
-            ptcl_pos -= (bc_count[idx].array() * volume.array()).matrix();
-        }
+        bc_count = (ptcls_pos.array() / volume_vecs.array()).floor();
+        ptcls_pos -= (bc_count.array() * volume_vecs.array()).matrix();
     } else if (bc_mode == "free") {
-        for (auto&& el : bc_count) {
-            el = Eigen::Vector3d::Zero();
-        }
+        bc_count = Eigen::MatrixXd::Zero(3, num_particles);
     } else {
         throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
     }
@@ -222,30 +126,25 @@ void MDSim::manageBoundaryCollision() {
 }
 
 void MDSim::renewPtclsFreePos(int step) {
-    for (const auto& bcc : bc_count) {
-        size_t idx = &bcc - &bc_count[0];
-        bc_count_sum[idx] += bcc;
-    }
+    bc_count_sum += bc_count;
     size_t step_idx = step - nonneg_step_offset;
-    for (const auto& ptcl_pos : ptcls_pos) {
-        size_t ptcl_idx = &ptcl_pos - &ptcls_pos[0];
-        ptcls_fpos_allst[step_idx][ptcl_idx] = ptcl_pos
-            + (bc_count_sum[ptcl_idx].array() * volume.array()).matrix();
-    }
+    ptcls_fpos_allst[step_idx] = ptcls_pos
+        + (bc_count_sum.array() * volume_vecs.array()).matrix();
     return;
 }
 
-double MDSim::calcLJPotentialAndForce(std::vector<Eigen::Vector3d>& ptcls_force) {
+double MDSim::calcLJPotentialAndForce(Eigen::MatrixXd& ptcls_force) {
     const double epsilon = 1.;
     const double sigma = 1.;
     double potential = 0.;
 
-    ptcls_force = fillVecWithZeros(num_particles);
+    ptcls_force = Eigen::MatrixXd::Zero(3, num_particles);
     Eigen::Vector3d pos_diff = Eigen::Vector3d::Zero();
     Eigen::Vector3d tmp_trunc = Eigen::Vector3d::Zero();
+    Eigen::Vector3d force = Eigen::Vector3d::Zero();
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
-            pos_diff = ptcls_pos[i] - ptcls_pos[j];
+            pos_diff = ptcls_pos.col(i) - ptcls_pos.col(j);
             if (bc_mode == "periodic") {
                 tmp_trunc = 2. * pos_diff.array() / volume.array();
                 tmp_trunc.x() = std::trunc(tmp_trunc.x());
@@ -269,8 +168,8 @@ double MDSim::calcLJPotentialAndForce(std::vector<Eigen::Vector3d>& ptcls_force)
                     - 6 * std::pow(sigma/ptcls_distance, 6)
                     ) / ptcls_distance;
             Eigen::Vector3d force = force_coeff * pos_diff / ptcls_distance;
-            ptcls_force[i] += force;
-            ptcls_force[j] -= force;
+            ptcls_force.col(i) += force;
+            ptcls_force.col(j) -= force;
         }
     }
     return potential;
@@ -278,17 +177,14 @@ double MDSim::calcLJPotentialAndForce(std::vector<Eigen::Vector3d>& ptcls_force)
 
 double MDSim::calcWholeKineticEnergy() {
     double sq_v_sum = 0.;
-    for (const auto& el : ptcls_velocity) {
-        sq_v_sum += el.squaredNorm();
+    for (int i = 0; i < num_particles; i++) {
+        sq_v_sum += ptcls_velocity.col(i).squaredNorm();
     }
     return 1/2. * ptcl_mass * sq_v_sum;
 }
 
 void MDSim::renewPtclsVel() {
-    for (auto&& ptcl_vel : ptcls_velocity) {
-        size_t idx = &ptcl_vel - &ptcls_velocity[0];
-        ptcl_vel += dt/(2.*ptcl_mass)*(next_force[idx] + prev_force[idx]);
-    }
+    ptcls_velocity += dt/(2.*ptcl_mass)*(next_force + prev_force);
     return;
 }
 
@@ -354,7 +250,7 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcRadialDistributio
     int dist_idx = 0;
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
-            pos_diff = ptcls_pos[i] - ptcls_pos[j];
+            pos_diff = ptcls_pos.col(i) - ptcls_pos.col(j);
             if (bc_mode == "periodic") {
                 tmp_trunc = 2 * pos_diff.array() / volume.array();
                 tmp_trunc.x() = std::trunc(tmp_trunc.x());
@@ -392,8 +288,8 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcRadialDistributio
 
 std::pair<std::vector<double>, std::vector<double>> MDSim::calcMeanSquareDisplacement() {
     const int num_nonneg_steps = ptcls_fpos_allst.size();
-    std::vector<double> time = generateRange(1., 1., num_nonneg_steps-1.);
-    for (auto&& el : time) {
+    std::vector<double> nonneg_time = generateRange(1., 1., num_nonneg_steps-1.);
+    for (auto&& el : nonneg_time) {
         el *= dt;
     }
 
@@ -406,7 +302,7 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcMeanSquareDisplac
         prog.printProgressBar(t);
         for (int t0 = 0; t0 < t; t0++) {
             for (int p = 0; p < num_particles; p++) {
-                displacement = ptcls_fpos_allst[t][p] - ptcls_fpos_allst[t0][p];
+                displacement = ptcls_fpos_allst[t].col(p) - ptcls_fpos_allst[t0].col(p);
                 tmp_MSD(t-t0-1, p) += displacement.squaredNorm();
             }
         }
@@ -419,5 +315,5 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcMeanSquareDisplac
     prog.finish();
     std::vector<double> ret_MSD(num_nonneg_steps-1, 0.);
     Eigen::Map<Eigen::VectorXd>(&ret_MSD[0], ret_MSD.size()) = MSD;
-    return std::make_pair(time, ret_MSD);
+    return std::make_pair(nonneg_time, ret_MSD);
 }
