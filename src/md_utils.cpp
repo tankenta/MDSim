@@ -28,11 +28,11 @@ MDSim::MDSim(
         throw std::invalid_argument("total_time must be longer than temp_cont_time.");
     }
     control_temp = temp_cont_time > 0;
-    times = generateRange(-temp_cont_time+dt, dt, total_time-temp_cont_time);
+    times = VecUtils<double>::generateRange(-temp_cont_time+dt, dt, total_time-temp_cont_time);
     num_steps = times.size();
-    steps = generateRange(0, 1, num_steps-1);
-    std::vector<bool> times_mask = makeVecMask(times, LESS, 0.);
-    nonneg_step_offset = maskedVec(times, times_mask).size();
+    steps = VecUtils<int>::generateRange(0, 1, num_steps-1);
+    std::vector<bool> times_mask = VecUtils<double>::makeVecMask(times, LESS, 0.);
+    nonneg_step_offset = VecUtils<double>::maskedVec(times, times_mask).size();
     const int num_nonneg_steps = num_steps - nonneg_step_offset;
 
     const double volume_scalar = num_particles / number_density;
@@ -241,7 +241,8 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcRadialDistributio
 
 std::pair<std::vector<double>, std::vector<double>> MDSim::calcMeanSquareDisplacement() {
     const int num_nonneg_steps = ptcls_fpos_allst.size();
-    std::vector<double> nonneg_time = generateRange(1., 1., num_nonneg_steps-1.);
+    std::vector<double> nonneg_time = VecUtils<double>::generateRange(
+            1., 1., num_nonneg_steps-1.);
     for (auto&& el : nonneg_time) {
         el *= dt;
     }
