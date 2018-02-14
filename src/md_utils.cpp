@@ -31,7 +31,7 @@ MDSim::MDSim(
     times = generateRange(-temp_cont_time+dt, dt, total_time-temp_cont_time);
     num_steps = times.size();
     steps = generateRange(0, 1, num_steps-1);
-    std::vector<bool> times_mask = makeVecMask(times, LESR, 0.);
+    std::vector<bool> times_mask = makeVecMask(times, LESS, 0.);
     nonneg_step_offset = maskedVec(times, times_mask).size();
     const int num_nonneg_steps = num_steps - nonneg_step_offset;
 
@@ -55,11 +55,6 @@ MDSim::MDSim(
     kinetic_energy_arr = vecZeros(num_steps);
     total_energy_arr = vecZeros(num_steps);
     current_temp_arr = vecZeros(num_steps);
-}
-
-std::vector<double> MDSim::vecZeros(int size) {
-    std::vector<double> v(size, 0.);
-    return v;
 }
 
 Eigen::MatrixXd MDSim::arrangeParticlesInFCCL(
@@ -100,19 +95,6 @@ Eigen::MatrixXd MDSim::initVelocity() {
     return ptcls_velocity;
 }
 
-void MDSim::renewPtclsPos() {
-    ptcls_pos += ptcls_velocity*dt + prev_force/(2.*ptcl_mass)*dt*dt;
-    return;
-}
-
-void MDSim::controlTempByScalingVel() {
-    const double kinetic_energy = calcWholeKineticEnergy() / num_particles;
-    const double current_temp = 2/3. * kinetic_energy;
-    const double scale_coeff = std::sqrt(target_temp / current_temp);
-    ptcls_velocity *= scale_coeff;
-    return;
-}
-
 void MDSim::manageBoundaryCollision() {
     if (bc_mode == "periodic") {
         bc_count = (ptcls_pos.array() / volume_vecs.array()).floor();
@@ -122,14 +104,6 @@ void MDSim::manageBoundaryCollision() {
     } else {
         throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
     }
-    return;
-}
-
-void MDSim::renewPtclsFreePos(int step) {
-    bc_count_sum += bc_count;
-    size_t step_idx = step - nonneg_step_offset;
-    ptcls_fpos_allst[step_idx] = ptcls_pos
-        + (bc_count_sum.array() * volume_vecs.array()).matrix();
     return;
 }
 
@@ -175,19 +149,6 @@ double MDSim::calcLJPotentialAndForce(Eigen::MatrixXd& ptcls_force) {
     return potential;
 }
 
-double MDSim::calcWholeKineticEnergy() {
-    double sq_v_sum = 0.;
-    for (int i = 0; i < num_particles; i++) {
-        sq_v_sum += ptcls_velocity.col(i).squaredNorm();
-    }
-    return 1/2. * ptcl_mass * sq_v_sum;
-}
-
-void MDSim::renewPtclsVel() {
-    ptcls_velocity += dt/(2.*ptcl_mass)*(next_force + prev_force);
-    return;
-}
-
 void MDSim::next(int step) {
     renewPtclsPos();
     manageBoundaryCollision();
@@ -209,14 +170,6 @@ void MDSim::next(int step) {
     }
 
     prev_force = next_force;
-    return;
-}
-
-void MDSim::calcTotalEnergy() {
-    for (const auto& kinetic : kinetic_energy_arr) {
-        size_t idx = &kinetic - &kinetic_energy_arr[0];
-        total_energy_arr[idx] = potential_arr[idx] + kinetic;
-    }
     return;
 }
 
