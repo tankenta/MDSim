@@ -1,5 +1,5 @@
 CC		= g++
-CFLAGS  = -std=c++11 -I../lib_eigen
+CFLAGS  = -O3 -std=c++11 -I../lib_eigen
 LDFLAGS = 
 
 TARGET = mdsim
@@ -16,9 +16,6 @@ $(TARGET): $(OBJS)
 
 main.o: main.cpp file_utils.hpp md_utils.hpp
 	$(CC) $(CFLAGS) -c $<
-
-# vec_utils.o: vec_utils.cpp vec_utils.hpp
-# 	$(CC) $(CFLAGS) -c $<
 
 md_utils.o: md_utils.cpp md_utils.hpp file_utils.hpp
 	$(CC) $(CFLAGS) -c $<
