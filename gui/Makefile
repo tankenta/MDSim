@@ -27,7 +27,7 @@ ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
 	LIBS = -lGL `pkg-config --static --libs glfw3`
 
-	CXXFLAGS = -I../src -I../lib_eigen -I../third_party/glm -I../third_party/imgui -I../third_party/gl3w `pkg-config --cflags glfw3`
+	CXXFLAGS = -I../src -I../third_party/eigen -I../third_party/glm -I../third_party/imgui -I../third_party/gl3w `pkg-config --cflags glfw3`
 	CXXFLAGS += -Wall -Wformat -std=c++11
 	CFLAGS = $(CXXFLAGS)
 endif

@@ -1,5 +1,5 @@
 CC		= g++
-CFLAGS  = -O3 -std=c++11 -I../lib_eigen
+CFLAGS  = -O3 -std=c++11 -I../third_party/eigen
 LDFLAGS = 
 
 TARGET = mdsim
