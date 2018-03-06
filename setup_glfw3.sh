@@ -7,4 +7,5 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3EB9326A7BF6DFCD
 sudo apt-get install software-properties-common
 sudo add-apt-repository 'deb http://ppa.launchpad.net/keithw/glfw3/ubuntu trusty main'
 sudo apt-get update
+sudo apt-get install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 sudo apt-get install libglfw3 libglfw3-dev
