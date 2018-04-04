@@ -17,7 +17,7 @@
 
 MDSim::MDSim(
         double dt, double total_time, double temp_cont_time,
-        double number_density, std::string bc_mode, double target_temp,
+        double number_density, std::string bc_mode_str, double target_temp,
         int num_particles, double ptcl_mass, int RDF_hist_size,
         const Eigen::Vector3i& cube_size)
 : dt(dt), total_time(total_time), temp_cont_time(temp_cont_time),
@@ -31,9 +31,16 @@ MDSim::MDSim(
     times = VecUtils<double>::generateRange(-temp_cont_time+dt, dt, total_time-temp_cont_time);
     num_steps = times.size();
     steps = VecUtils<int>::generateRange(0, 1, num_steps-1);
-    std::vector<bool> times_mask = VecUtils<double>::makeVecMask(times, LESS, 0.);
+    std::vector<bool> times_mask = VecUtils<double>::makeVecMask(times, CompOp::LESS, 0.);
     nonneg_step_offset = VecUtils<double>::maskedVec(times, times_mask).size();
     const int num_nonneg_steps = num_steps - nonneg_step_offset;
+    if (bc_mode_str == "periodic") {
+        bc_mode = BCMode::Periodic;
+    } else if (bc_mode_str == "free") {
+        bc_mode = BCMode::Free;
+    } else {
+        throw std::invalid_argument("bc_mode_str must be 'periodic' or 'free'.");
+    }
 
     const double volume_scalar = num_particles / number_density;
     volume = Eigen::Vector3d::Constant(std::pow(volume_scalar, 1/3.));
@@ -96,13 +103,14 @@ Eigen::MatrixXd MDSim::initVelocity() {
 }
 
 void MDSim::manageBoundaryCollision() {
-    if (bc_mode == "periodic") {
+    switch (bc_mode) {
+    case BCMode::Periodic:
         bc_count = (ptcls_pos.array() / volume_vecs.array()).floor();
         ptcls_pos -= (bc_count.array() * volume_vecs.array()).matrix();
-    } else if (bc_mode == "free") {
+        break;
+    case BCMode::Free:
         bc_count = Eigen::MatrixXd::Zero(3, num_particles);
-    } else {
-        throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
+        break;
     }
     return;
 }
@@ -119,16 +127,16 @@ double MDSim::calcLJPotentialAndForce(Eigen::MatrixXd& ptcls_force) {
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
             pos_diff = ptcls_pos.col(i) - ptcls_pos.col(j);
-            if (bc_mode == "periodic") {
+            switch (bc_mode) {
+            case BCMode::Periodic:
                 tmp_trunc = 2. * pos_diff.array() / volume.array();
                 tmp_trunc.x() = std::trunc(tmp_trunc.x());
                 tmp_trunc.y() = std::trunc(tmp_trunc.y());
                 tmp_trunc.z() = std::trunc(tmp_trunc.z());
                 pos_diff -= (tmp_trunc.array() * volume.array()).matrix();
-            } else if (bc_mode == "free") {
-                continue;
-            } else {
-                throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
+                break;
+            case BCMode::Free:
+                break;
             }
             double ptcls_distance = pos_diff.norm();
 
@@ -204,16 +212,16 @@ std::pair<std::vector<double>, std::vector<double>> MDSim::calcRadialDistributio
     for (int j = 1; j < num_particles; j++) {
         for (int i = 0; i < j; i++) {
             pos_diff = ptcls_pos.col(i) - ptcls_pos.col(j);
-            if (bc_mode == "periodic") {
+            switch (bc_mode) {
+            case BCMode::Periodic:
                 tmp_trunc = 2 * pos_diff.array() / volume.array();
                 tmp_trunc.x() = std::trunc(tmp_trunc.x());
                 tmp_trunc.y() = std::trunc(tmp_trunc.y());
                 tmp_trunc.z() = std::trunc(tmp_trunc.z());
                 pos_diff -= (tmp_trunc.array() * volume.array()).matrix();
-            } else if (bc_mode == "free") {
-                continue;
-            } else {
-                throw std::invalid_argument("bc_mode must be 'periodic' or 'free'.");
+                break;
+            case BCMode::Free:
+                break;
             }
             ptcls_distance[dist_idx] = pos_diff.norm();
             dist_idx++;

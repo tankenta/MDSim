@@ -9,11 +9,15 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+enum class BCMode {
+    Periodic, Free
+};
+
 class MDSim {
 public:
     MDSim(
             double dt, double total_time, double temp_cont_time,
-            double number_density, std::string bc_mode, double target_temp,
+            double number_density, std::string bc_mode_str, double target_temp,
             int num_particles, double ptcl_mass, int RDF_hist_size,
             const Eigen::Vector3i& cube_size);
     void manageBoundaryCollision();
@@ -39,7 +43,7 @@ private:
     const double dt, total_time, temp_cont_time, number_density, target_temp, ptcl_mass;
     const int num_particles, RDF_hist_size;
     int num_steps, nonneg_step_offset; 
-    std::string bc_mode;
+    BCMode bc_mode;
     bool control_temp;
     Eigen::Vector3d volume;
     Eigen::MatrixXd volume_vecs;

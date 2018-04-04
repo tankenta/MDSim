@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <vector>
 
-enum CompOp {
+enum class CompOp {
     GRTR, LESS, GEQ, LEQ, EQ
 };
 
@@ -21,31 +21,31 @@ std::vector<bool> VecUtils<T>::makeVecMask(const std::vector<T>& vec, CompOp c_o
     std::vector<bool> mask(vec.size());
 
     switch (c_op) {
-        case GRTR:
+        case CompOp::GRTR:
             for (const auto& el : vec) {
                 size_t idx = &el - &vec[0];
                 mask[idx] = el > num;
             }
             break;
-        case LESS:
+        case CompOp::LESS:
             for (const auto& el : vec) {
                 size_t idx = &el - &vec[0];
                 mask[idx] = el < num;
             }
             break;
-        case GEQ:
+        case CompOp::GEQ:
             for (const auto& el : vec) {
                 size_t idx = &el - &vec[0];
                 mask[idx] = el >= num;
             }
             break;
-        case LEQ:
+        case CompOp::LEQ:
             for (const auto& el : vec) {
                 size_t idx = &el - &vec[0];
                 mask[idx] = el <= num;
             }
             break;
-        case EQ:
+        case CompOp::EQ:
             for (const auto& el : vec) {
                 size_t idx = &el - &vec[0];
                 mask[idx] = el == num;
