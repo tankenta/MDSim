@@ -32,6 +32,19 @@
 #include <Eigen/Geometry>
 #include "md_utils.hpp"
 
+struct SLposPolar{
+    float radius;
+    float theta;
+    float phi;
+    glm::vec3 ortho() {
+        return glm::vec3(
+                radius * std::sin(theta) * std::cos(phi),
+                radius * std::sin(theta) * std::sin(phi),
+                radius * std::cos(theta)
+        );
+    }
+};
+
 GLboolean printShaderInfoLog(GLuint shader, const char *str) {
     GLint status;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -239,7 +252,6 @@ int main(int, char**)
                 static_cast<GLsizei>(solidSphereVertex.size()), solidSphereVertex.data(),
                 static_cast<GLsizei>(solidSphereIndex.size()), solidSphereIndex.data()));
 
-    auto Lpos = glm::vec4(0.0f, 0.0f, 5.0f, 1.0f);
     auto Lamb = glm::vec3(0.2f);
     auto Ldiff = glm::vec3(1.0f);
     auto Lspec = glm::vec3(1.0f);
@@ -296,7 +308,8 @@ int main(int, char**)
         // 1. Show a simple window.
         // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets automatically appears in a window called "Debug".
         static float scale = 0.25f;
-        static float angle = 0.0f;
+        static float cell_angle = 0.0f;
+        static SLposPolar Lpos_polar = { 30.0f, 1.0f/2.0f*glm::pi<float>(), 1.0f/6.0f*glm::pi<float>() };
         {
             static float f = 0.0f;
             static int counter = 0;
@@ -315,7 +328,12 @@ int main(int, char**)
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
             ImGui::DragFloat("particle radius", &scale, 0.01f, 0.0f, 100.0f, NULL, 3.0f);
-            ImGui::SliderAngle("angle", &angle);
+            ImGui::SliderAngle("cell angle", &cell_angle);
+            if (ImGui::TreeNode("Light position")) {
+                ImGui::DragFloat("radius", &Lpos_polar.radius, 0.01f, 0.0f, 100.0f, NULL, 3.0f);
+                ImGui::SliderAngle("angle1", &Lpos_polar.theta);
+                ImGui::SliderAngle("angle2", &Lpos_polar.phi);
+            }
         }
 
         // 2. Show another simple window. In most cases you will use an explicit Begin/End pair to name your windows.
@@ -349,7 +367,7 @@ int main(int, char**)
 
         const GLfloat *const location = window.getLocation();
         const glm::mat4 global_rot = glm::rotate(
-                angle, glm::vec3(0.0f, 1.0f, 0.0f));
+                cell_angle, glm::vec3(0.0f, 1.0f, 0.0f));
         const glm::mat4 ptcl_scale = glm::scale(glm::mat4(1.0f), glm::vec3(scale));
         const glm::mat4 global_trans = glm::translate(
                 glm::mat4(1.0f), glm::vec3(location[0], location[1], 0.0f));
@@ -357,6 +375,7 @@ int main(int, char**)
                 glm::vec3(15.0f, 20.0f, 25.0f),
                 glm::vec3(0.0f, 0.0f, 0.0f),
                 glm::vec3(0.0f, 1.0f, 0.0f));
+        auto Lpos = glm::vec4(Lpos_polar.ortho(), 1.0f);
 
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform4fv(Lpos_loc, 1, glm::value_ptr(view * Lpos));
